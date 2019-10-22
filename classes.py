@@ -15,6 +15,7 @@ class Board:
         self.players = []
         self.players_start_pos = []
         self.next_start_index = 0
+        self.figure_cemetery = []
 
     def register_player(self, player):
         """
@@ -90,11 +91,20 @@ class Player:
                     new_field = move_amount - diff
 
         print("Moving the figure {} {} fields forward!".format(figure, move_amount))
+
         # remove figure from old field
         board.fields[figure_index] = "0"
+
+        # check if new field is blocked by another figure
+        if board.fields[new_field] != "0":
+            # blocking figure not owned by player
+            if self.name not in board.fields[new_field]:
+
+                
         # add figure to new field
         board.fields[new_field] = figure
         # TODO intelligently select figure to move if more on board
+
 
 # temp Tests
 game_board = Board(4, 40)
@@ -119,7 +129,6 @@ if dice_eye == 6:
     print(game_board.fields)
     p1.move_figure(game_board, p1.roll())
     print(game_board.fields)
-
 '''
 
 
