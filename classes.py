@@ -34,6 +34,25 @@ class Board:
             self.next_start_index += int(self.field_amount / self.player_amount)
 
 
+class Figure:
+    def __init__(self, name):
+        self.name = name
+        self.distance_to_target = -1
+        self.field = -1
+        self.target_field = -1
+
+    def place(self, board):
+        self.distance_to_target = board.field_amount
+
+    def move(self, move_amount):
+        self.distance_to_target = self.distance_to_target - move_amount
+
+    def ban(self):
+        self.distance_to_target = -1
+        self.field = -1
+        self.target_field = -1
+
+
 class Player:
     """a class that represents a Player of the Board Game"""
     def __init__(self, name, color):
@@ -104,36 +123,43 @@ class Player:
         """
         method to select the most suitable figure
         """
-        # TODO intelligently select figure if more on board
-        #   TODO prio 2: figure with the closest distance to finish
+        # TODO Test of intelligent figure selection if more on board
 
-        figure = ""
+        selected_figure = ""
         # find next figure
         for field in board.fields:
             if hasattr(field, "name"):
                 if self.name in field.name:
-                    # get figure
+                    # set figure
                     figure = field
-
-                    # get index of figure
+                    # get field of figure
                     figure.field = board.fields.index(figure)
-                    # calc new index of figure
+                    # calc target field  of figure
                     figure.target_field = figure.field + move_amount
                     # handle field loop
                     if figure.target_field > board.field_amount - 1:
                         diff = board.field_amount - figure.field
                         figure.target_field = move_amount - diff
-                    # check if figure has a chance to ban other figures
-                    if hasattr(board.fields[figure.target_field], "name") and self.name not in board.fields[figure.target_field].name:
+                    # check if more than one of player's figures on field
+                    if len(self.figures) < 3:
+                        # return figure if it has a chance to ban other figures
+                        if hasattr(board.fields[figure.target_field], "name") and self.name not in board.fields[figure.target_field].name:
+                            return figure
+                        # determine figure with closest distance to target
+                        if hasattr(selected_figure, "distance_to_target"):
+                            if figure.distance_to_target > selected_figure.distance_to_target:
+                                selected_figure = figure
+                        else:
+                            selected_figure = figure
+                    else:
                         return figure
 
-        return figure
+        return selected_figure
 
     def move_figure(self, board, move_amount):
         """
         method to select and move a player figure
         """
-        # TODO implement logic to put a figure to finish pit
 
         # select figure
         figure = self.select_figure(board, move_amount)
@@ -159,25 +185,9 @@ class Player:
             figure.move(move_amount)
             board.fields[figure.target_field] = figure
 
-
-class Figure:
-    def __init__(self, name):
-        self.name = name
-        self.distance_to_target = -1
-        self.field = -1
-        self.target_field = -1
-
-    def place(self, board):
-        self.distance_to_target = board.field_amount
-
-    def move(self, move_amount):
-        self.distance_to_target = self.distance_to_target - move_amount
-
-    def ban(self):
-        self.distance_to_target = -1
-        self.field = -1
-        self.target_field = -1
-
+    # TODO implement logic to put a figure to finish pit
+    def finish_figure(self, board):
+        pass
 
 # temp Tests
 game_board = Board(4, 40)
