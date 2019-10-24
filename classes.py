@@ -123,8 +123,6 @@ class Player:
         """
         method to select the most suitable figure
         """
-        # TODO Test of intelligent figure selection if more on board
-
         selected_figure = ""
         # find next figure
         for field in board.fields:
@@ -147,7 +145,7 @@ class Player:
                             return figure
                         # determine figure with closest distance to target
                         if hasattr(selected_figure, "distance_to_target"):
-                            if figure.distance_to_target > selected_figure.distance_to_target:
+                            if figure.distance_to_target < selected_figure.distance_to_target:
                                 selected_figure = figure
                         else:
                             selected_figure = figure
@@ -189,7 +187,18 @@ class Player:
     def finish_figure(self, board):
         pass
 
+
 # temp Tests
+def reveal_name(list):
+    new_list = []
+    for item in list:
+        if hasattr(item, "name"):
+            new_list.append(item.name)
+        else:
+            new_list.append(item)
+    return new_list
+
+
 game_board = Board(4, 40)
 p1 = Player("Dave", "Red")
 p2 = Player("Rose", "Yellow")
@@ -198,13 +207,18 @@ game_board.register_player(p2)
 
 p1.place_figure(game_board)
 p2.place_figure(game_board)
-print(game_board.fields)
-p1.move_figure(game_board, 10)
-print(game_board.fields)
-print(game_board.figure_cemetery)
+p1.move_figure(game_board, 5)
+p1.place_figure(game_board)
+print(reveal_name(game_board.fields))
+p1.move_figure(game_board, 2)
+
+print(reveal_name(game_board.fields))
+print(reveal_name(game_board.figure_cemetery))
 p2.grab_figures_from_cemetery(game_board)
-print(game_board.figure_cemetery)
-print(p2.figures)
+print(reveal_name(game_board.figure_cemetery))
+print(reveal_name(p2.figures))
+
+
 
 '''
 dice_eye = p1.roll()
