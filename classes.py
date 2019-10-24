@@ -40,14 +40,24 @@ class Figure:
         self.distance_to_target = -1
         self.field = -1
         self.target_field = -1
+        self.finish_slot = -1
 
     def place(self, board):
+        """
+        method to place a figure
+        """
         self.distance_to_target = board.field_amount
 
     def move(self, move_amount):
+        """
+        method to move a figure
+        """
         self.distance_to_target = self.distance_to_target - move_amount
 
     def ban(self):
+        """
+        method to ban a figure
+        """
         self.distance_to_target = -1
         self.field = -1
         self.target_field = -1
@@ -55,19 +65,20 @@ class Figure:
 
 class Player:
     """a class that represents a Player of the Board Game"""
-    def __init__(self, name, color):
+    def __init__(self, name, color, figure_amount):
         self.name = name
         self.id = "undefined"
         self.color = color
+        self.figure_amount = figure_amount
         self.figures = []
+        self.finished_figures = ["0"] * figure_amount
         # TODO implement turns in game loop
         self.turns = 0
         self.roll_turns = 0
         self.no = "undefined"
 
-        # TODO consider dynamic figure amount
         # create start figures for player
-        for i in range(4):
+        for i in range(self.figure_amount):
             figure = Figure("{}-{}-{}".format(self.name, self.color, i))
             self.figures.append(figure)
 
@@ -106,7 +117,7 @@ class Player:
 
     def place_figure(self, board):
         """
-        method to place a new figure to the start position
+        method to place a new figure to the start position of a board
         """
         start_pos = board.players_start_pos[self.no]
 
@@ -123,7 +134,8 @@ class Player:
         """
         method to select the most suitable figure
         """
-        selected_figure = ""
+        selected_figure = "undefined"
+
         # find next figure
         for field in board.fields:
             if hasattr(field, "name"):
@@ -132,25 +144,38 @@ class Player:
                     figure = field
                     # get field of figure
                     figure.field = board.fields.index(figure)
-                    # calc target field  of figure
-                    figure.target_field = figure.field + move_amount
-                    # handle field loop
-                    if figure.target_field > board.field_amount - 1:
-                        diff = board.field_amount - figure.field
-                        figure.target_field = move_amount - diff
-                    # check if more than one of player's figures on field
-                    if len(self.figures) < 3:
-                        # return figure if it has a chance to ban other figures
-                        if hasattr(board.fields[figure.target_field], "name") and self.name not in board.fields[figure.target_field].name:
-                            return figure
-                        # determine figure with closest distance to target
-                        if hasattr(selected_figure, "distance_to_target"):
-                            if figure.distance_to_target < selected_figure.distance_to_target:
+                    # check if figure can finish
+                    if figure.distance_to_target <= move_amount:
+                        # determine free slots in finished_figures
+                        free_slots =[]
+                        for i in range(len(self.finished_figures)):
+                            if self.finished_figures[i] == "0":
+                                free_slots.append(i)
+                        # return figure if free slot can be reached by move_amount
+                        for slot in free_slots:
+                            if abs(figure.distance_to_target - move_amount) == slot:
+                                figure.finish_slot = slot
+                                return figure
+                    else:
+                        # calc target field  of figure
+                        figure.target_field = figure.field + move_amount
+                        # handle field loop
+                        if figure.target_field > board.field_amount - 1:
+                            diff = board.field_amount - figure.field
+                            figure.target_field = move_amount - diff
+                        # check if more than one of player's figures on field
+                        if len(self.figures) < 3:
+                            # return figure if it has a chance to ban other figures
+                            if hasattr(board.fields[figure.target_field], "name") and self.name not in board.fields[figure.target_field].name:
+                                return figure
+                            # determine figure with closest distance to target
+                            if hasattr(selected_figure, "distance_to_target"):
+                                if figure.distance_to_target < selected_figure.distance_to_target:
+                                    selected_figure = figure
+                            else:
                                 selected_figure = figure
                         else:
-                            selected_figure = figure
-                    else:
-                        return figure
+                            return figure
 
         return selected_figure
 
@@ -158,34 +183,39 @@ class Player:
         """
         method to select and move a player figure
         """
-
         # select figure
         figure = self.select_figure(board, move_amount)
-
-        # remove figure from old field
-        board.fields[figure.field] = "0"
-        # check if new field is blocked by another figure
-        if hasattr(board.fields[figure.target_field], "name"):
-            # check if blocking figure owned by player
-            if self.name in board.fields[figure.target_field].name:
-                # keep player figure on old field
-                board.fields[figure.field] = figure
-                print("Target field is blocked by player's own figure {}! Revert move!".format(board.fields[figure.target_field].name))
+        # only proceed if there is a selected figure (figure that is movable)
+        if figure != "undefined":
+            # check if figure has possible finish slot
+            if figure.finish_slot != -1:
+                self.finish_figure(board, figure)
             else:
-                # remove foreign player figure
-                board.figure_cemetery.append(board.fields[figure.target_field])
-                print("Target field is blocked by foreign player! Banning figure {}!".format(board.fields[figure.target_field].name))
-                # move player figure to new field
-                figure.move(move_amount)
-                board.fields[figure.target_field] = figure
-        else:
-            # move player figure to new field
-            figure.move(move_amount)
-            board.fields[figure.target_field] = figure
+                # remove figure from old field
+                board.fields[figure.field] = "0"
+                # check if new field is blocked by another figure
+                if hasattr(board.fields[figure.target_field], "name"):
+                    # check if blocking figure owned by player
+                    if self.name in board.fields[figure.target_field].name:
+                        # keep player figure on old field
+                        board.fields[figure.field] = figure
+                        print("Target field is blocked by player's own figure {}! Revert move!".format(board.fields[figure.target_field].name))
+                    else:
+                        # remove foreign player figure
+                        board.figure_cemetery.append(board.fields[figure.target_field])
+                        print("Target field is blocked by foreign player! Banning figure {}!".format(board.fields[figure.target_field].name))
+                        # move player figure to new field
+                        figure.move(move_amount)
+                        board.fields[figure.target_field] = figure
+                else:
+                    # move player figure to new field
+                    figure.move(move_amount)
+                    board.fields[figure.target_field] = figure
 
-    # TODO implement logic to put a figure to finish pit
-    def finish_figure(self, board):
-        pass
+    def finish_figure(self, board, figure):
+        board.fields[figure.field] = "0"
+        self.finished_figures[figure.finish_slot] = figure
+        print("Player {} reached the finish with figure {}!".format(self.name, figure.name))
 
 
 # temp Tests
@@ -200,8 +230,8 @@ def reveal_name(list):
 
 
 game_board = Board(4, 40)
-p1 = Player("Dave", "Red")
-p2 = Player("Rose", "Yellow")
+p1 = Player("Dave", "Red", 4)
+p2 = Player("Rose", "Yellow", 4)
 game_board.register_player(p1)
 game_board.register_player(p2)
 
@@ -210,14 +240,17 @@ p2.place_figure(game_board)
 p1.move_figure(game_board, 5)
 p1.place_figure(game_board)
 print(reveal_name(game_board.fields))
-p1.move_figure(game_board, 2)
-
+p1.move_figure(game_board, 40)
+p1.move_figure(game_board, 38)
 print(reveal_name(game_board.fields))
+print(reveal_name(p1.finished_figures))
+
+'''
 print(reveal_name(game_board.figure_cemetery))
 p2.grab_figures_from_cemetery(game_board)
 print(reveal_name(game_board.figure_cemetery))
 print(reveal_name(p2.figures))
-
+'''
 
 
 '''
