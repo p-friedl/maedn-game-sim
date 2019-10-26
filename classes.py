@@ -8,7 +8,6 @@ class Board:
     field_amount needs to be an even number, original game amount for 4 players is 40
     """
     def __init__(self, player_amount, field_amount):
-        # TODO implement exception for invalid field and player amounts
         self.field_amount = field_amount
         self.fields = ["0"] * field_amount
         self.player_amount = player_amount
@@ -72,14 +71,13 @@ class Player:
         self.figure_amount = figure_amount
         self.figures = []
         self.finished_figures = ["0"] * figure_amount
-        # TODO implement turns in game loop
         self.turns = 0
         self.roll_turns = 0
         self.no = "undefined"
 
         # create start figures for player
-        for i in range(self.figure_amount):
-            figure = Figure("{}-{}-{}".format(self.name, self.color, i))
+        for x in range(self.figure_amount):
+            figure = Figure("{}-{}-{}".format(self.name, self.color, x))
             self.figures.append(figure)
 
     def roll(self):
@@ -218,7 +216,7 @@ class Player:
         print("Player {} reached the finish with figure {}!".format(self.name, figure.name))
 
 
-# temp Tests
+# temp function to reveal player name on game board
 def reveal_name(list):
     new_list = []
     for item in list:
@@ -229,39 +227,47 @@ def reveal_name(list):
     return new_list
 
 
+# game init
+no_winner = True
+
 game_board = Board(4, 40)
 p1 = Player("Dave", "Red", 4)
-p2 = Player("Rose", "Yellow", 4)
 game_board.register_player(p1)
+p2 = Player("Rose", "Yellow", 4)
 game_board.register_player(p2)
+p3 = Player("PuPu", "Black", 4)
+game_board.register_player(p3)
+p4 = Player("Pat", "Blue", 4)
+game_board.register_player(p4)
+players = [p1, p2, p3, p4]
 
-p1.place_figure(game_board)
-p2.place_figure(game_board)
-p1.move_figure(game_board, 5)
-p1.place_figure(game_board)
-print(reveal_name(game_board.fields))
-p1.move_figure(game_board, 40)
-p1.move_figure(game_board, 38)
-print(reveal_name(game_board.fields))
-print(reveal_name(p1.finished_figures))
-
-'''
-print(reveal_name(game_board.figure_cemetery))
-p2.grab_figures_from_cemetery(game_board)
-print(reveal_name(game_board.figure_cemetery))
-print(reveal_name(p2.figures))
-'''
-
-
-'''
-dice_eye = p1.roll()
-print(dice_eye)
-if dice_eye == 6:
-    p1.place_figure(game_board)
-    print(game_board.fields)
-    p1.move_figure(game_board, p1.roll())
-    print(game_board.fields)
-'''
-
-
-
+# game loop
+while no_winner:
+    for player in players:
+        # increment player turns
+        player.turns += 1
+        # grab players figures from cemetery
+        player.grab_figures_from_cemetery(game_board)
+        # check for player's figures on board
+        if player.has_figures_on_board(game_board):
+            if player.roll == 6:
+                player.place_figure(game_board)
+            player.move_figure(game_board, player.roll())
+        # player has no figure on board
+        else:
+            # three chances to roll a 6
+            for i in range(3):
+                if player.roll() == 6:
+                    # place new figure
+                    player.place_figure(game_board)
+                    # move figure
+                    player.move_figure(game_board, player.roll())
+                    break
+        # count finished figures to evaluate win condition
+        finished_figures = [figure for figure in player.finished_figures if hasattr(figure, "name")]
+        if len(finished_figures) == player.figure_amount:
+            no_winner = False
+            print("Player {} won the game after {} turns!".format(player.name, player.turns))
+            break
+        # temp output of fields
+        print(reveal_name(game_board.fields))
