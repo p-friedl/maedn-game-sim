@@ -1,4 +1,34 @@
 import random
+import logging
+import sys
+from logging.handlers import TimedRotatingFileHandler
+
+FORMATTER = logging.Formatter("%(asctime)s — %(name)s — %(levelname)s — %(message)s")
+LOG_FILE = "game.log"
+
+
+def get_console_handler():
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(FORMATTER)
+    return console_handler
+
+
+def get_file_handler():
+    file_handler = TimedRotatingFileHandler(LOG_FILE, when='midnight')
+    file_handler.setFormatter(FORMATTER)
+    return file_handler
+
+
+def get_logger(logger_name):
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(get_console_handler())
+    logger.addHandler(get_file_handler())
+    logger.propagate = False
+    return logger
+
+
+logger = get_logger("gamesim")
 
 
 class Board:
@@ -31,6 +61,7 @@ class Board:
             self.players_start_pos.append(self.next_start_index)
             # increase start index for next player to register
             self.next_start_index += int(self.field_amount / self.player_amount)
+            logger.info("registered player {}".format(player.id))
 
 
 class Figure:
@@ -70,6 +101,7 @@ class Player:
         self.color = color
         self.figure_amount = figure_amount
         self.figures = []
+        self.start_figures = []
         self.finished_figures = ["0"] * figure_amount
         self.turns = 0
         self.roll_turns = 0
@@ -78,6 +110,7 @@ class Player:
         # create start figures for player
         for x in range(self.figure_amount):
             figure = Figure("{}-{}-{}".format(self.name, self.color, x))
+            self.start_figures.append(figure)
             self.figures.append(figure)
 
     def roll(self):
@@ -93,10 +126,8 @@ class Player:
         method to check if player has figures on the board, returns boolean
         """
         for figure in self.figures:
-            if figure.name in board.fields:
+            if figure in board.fields:
                 return True
-
-        return False
 
     def grab_figures_from_cemetery(self, board):
         """
@@ -111,7 +142,7 @@ class Player:
                 board.figure_cemetery.remove(figure)
                 figure.ban()
                 # reset figure(s) to start pit
-                self.figures.append(figure)
+                self.start_figures.append(figure)
 
     def place_figure(self, board):
         """
@@ -123,8 +154,8 @@ class Player:
         if hasattr(board.fields[start_pos], "name"):
             # remove foreign player figure
             board.figure_cemetery.append(board.fields[start_pos])
-            print("Target field is blocked by foreign player! Banning figure {}!".format(board.fields[start_pos].name))
-        removed_figure = self.figures.pop()
+            logger.info("Target field is blocked by foreign player! Banning figure {}!".format(board.fields[start_pos].name))
+        removed_figure = self.start_figures.pop()
         removed_figure.place(board)
         board.fields[start_pos] = removed_figure
 
@@ -162,7 +193,7 @@ class Player:
                             diff = board.field_amount - figure.field
                             figure.target_field = move_amount - diff
                         # check if more than one of player's figures on field
-                        if len(self.figures) < 3:
+                        if len(self.start_figures) < 3:
                             # return figure if it has a chance to ban other figures
                             if hasattr(board.fields[figure.target_field], "name") and self.name not in board.fields[figure.target_field].name:
                                 return figure
@@ -197,11 +228,11 @@ class Player:
                     if self.name in board.fields[figure.target_field].name:
                         # keep player figure on old field
                         board.fields[figure.field] = figure
-                        print("Target field is blocked by player's own figure {}! Revert move!".format(board.fields[figure.target_field].name))
+                        logger.info("Target field is blocked by player's own figure {}! Revert move!".format(board.fields[figure.target_field].name))
                     else:
                         # remove foreign player figure
                         board.figure_cemetery.append(board.fields[figure.target_field])
-                        print("Target field is blocked by foreign player! Banning figure {}!".format(board.fields[figure.target_field].name))
+                        logger.info("Target field is blocked by foreign player! Banning figure {}!".format(board.fields[figure.target_field].name))
                         # move player figure to new field
                         figure.move(move_amount)
                         board.fields[figure.target_field] = figure
@@ -213,7 +244,7 @@ class Player:
     def finish_figure(self, board, figure):
         board.fields[figure.field] = "0"
         self.finished_figures[figure.finish_slot] = figure
-        print("Player {} reached the finish with figure {}!".format(self.name, figure.name))
+        logger.info("Player {} reached the finish with figure {}!".format(self.name, figure.name))
 
 
 # temp function to reveal player name on game board
@@ -242,15 +273,19 @@ game_board.register_player(p4)
 players = [p1, p2, p3, p4]
 
 # game loop
+logger.info("Starting new game simulation..")
 while no_winner:
     for player in players:
+
         # increment player turns
         player.turns += 1
+        logger.info("Player {}, Turn {}:".format(player.name, player.turns))
+        logger.debug("Player data before turn: start figures: {}, finished figures: {}".format(reveal_name(player.start_figures), reveal_name(player.finished_figures)))
         # grab players figures from cemetery
         player.grab_figures_from_cemetery(game_board)
         # check for player's figures on board
         if player.has_figures_on_board(game_board):
-            if player.roll == 6:
+            if player.roll == 6 and len(player.start_figures) != 0:
                 player.place_figure(game_board)
             player.move_figure(game_board, player.roll())
         # player has no figure on board
@@ -267,7 +302,9 @@ while no_winner:
         finished_figures = [figure for figure in player.finished_figures if hasattr(figure, "name")]
         if len(finished_figures) == player.figure_amount:
             no_winner = False
-            print("Player {} won the game after {} turns!".format(player.name, player.turns))
+            logger.info("Player {} won the game after {} turns!".format(player.name, player.turns))
             break
-        # temp output of fields
-        print(reveal_name(game_board.fields))
+
+        logger.debug("Player data after turn: start figures: {}, finished figures: {}".format(reveal_name(player.start_figures), reveal_name(player.finished_figures)))
+        # debug output of board fields
+        logger.debug("Board fields after turn: {}".format(reveal_name(game_board.fields)))
