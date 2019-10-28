@@ -1,34 +1,5 @@
 import random
-import logging
-import sys
-from logging.handlers import TimedRotatingFileHandler
-
-FORMATTER = logging.Formatter("%(asctime)s — %(name)s — %(levelname)s — %(message)s")
-LOG_FILE = "game.log"
-
-
-def get_console_handler():
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(FORMATTER)
-    return console_handler
-
-
-def get_file_handler():
-    file_handler = TimedRotatingFileHandler(LOG_FILE, when='midnight')
-    file_handler.setFormatter(FORMATTER)
-    return file_handler
-
-
-def get_logger(logger_name):
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(get_console_handler())
-    logger.addHandler(get_file_handler())
-    logger.propagate = False
-    return logger
-
-
-logger = get_logger("gamesim")
+from logger_conf import logger
 
 
 class Board:
@@ -163,6 +134,7 @@ class Player:
         """
         method to select the most suitable figure
         """
+        # TODO ensure start pos is never blocked (that figure is preferably moved)
         selected_figure = "undefined"
 
         # find next figure
@@ -245,66 +217,3 @@ class Player:
         board.fields[figure.field] = "0"
         self.finished_figures[figure.finish_slot] = figure
         logger.info("Player {} reached the finish with figure {}!".format(self.name, figure.name))
-
-
-# temp function to reveal player name on game board
-def reveal_name(list):
-    new_list = []
-    for item in list:
-        if hasattr(item, "name"):
-            new_list.append(item.name)
-        else:
-            new_list.append(item)
-    return new_list
-
-
-# game init
-no_winner = True
-
-game_board = Board(4, 40)
-p1 = Player("Dave", "Red", 4)
-game_board.register_player(p1)
-p2 = Player("Rose", "Yellow", 4)
-game_board.register_player(p2)
-p3 = Player("PuPu", "Black", 4)
-game_board.register_player(p3)
-p4 = Player("Pat", "Blue", 4)
-game_board.register_player(p4)
-players = [p1, p2, p3, p4]
-
-# game loop
-logger.info("Starting new game simulation..")
-while no_winner:
-    for player in players:
-
-        # increment player turns
-        player.turns += 1
-        logger.info("Player {}, Turn {}:".format(player.name, player.turns))
-        logger.debug("Player data before turn: start figures: {}, finished figures: {}".format(reveal_name(player.start_figures), reveal_name(player.finished_figures)))
-        # grab players figures from cemetery
-        player.grab_figures_from_cemetery(game_board)
-        # check for player's figures on board
-        if player.has_figures_on_board(game_board):
-            if player.roll == 6 and len(player.start_figures) != 0:
-                player.place_figure(game_board)
-            player.move_figure(game_board, player.roll())
-        # player has no figure on board
-        else:
-            # three chances to roll a 6
-            for i in range(3):
-                if player.roll() == 6:
-                    # place new figure
-                    player.place_figure(game_board)
-                    # move figure
-                    player.move_figure(game_board, player.roll())
-                    break
-        # count finished figures to evaluate win condition
-        finished_figures = [figure for figure in player.finished_figures if hasattr(figure, "name")]
-        if len(finished_figures) == player.figure_amount:
-            no_winner = False
-            logger.info("Player {} won the game after {} turns!".format(player.name, player.turns))
-            break
-
-        logger.debug("Player data after turn: start figures: {}, finished figures: {}".format(reveal_name(player.start_figures), reveal_name(player.finished_figures)))
-        # debug output of board fields
-        logger.debug("Board fields after turn: {}".format(reveal_name(game_board.fields)))
