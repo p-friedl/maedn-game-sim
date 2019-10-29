@@ -46,7 +46,7 @@ def simulate_game(player_amount, figure_amount, field_amount):
             if len(finished_figures) == player.figure_amount:
                 no_winner = False
                 logger.info("Player {} won the game after {} turns!".format(player.name, player.turns))
-                st.write("Player {} won the game after {} turns!".format(player.name, player.turns))
+                st.write("Player {} won the game after {} turns and {} rolls!".format(player.name, player.turns, player.roll_turns))
                 break
 
             logger.debug("Player data after turn: start figures: {}, finished figures: {}".format(reveal_name(player.start_figures), reveal_name(player.finished_figures)))
@@ -54,9 +54,11 @@ def simulate_game(player_amount, figure_amount, field_amount):
             logger.debug("Board fields after turn: {}".format(reveal_name(game_board.fields)))
 
 
-player_input = st.number_input("Amount of Players:", min_value=2, max_value=6)
-figure_input = st.number_input("Amount of Figures per Player:", min_value=4)
-field_input = st.number_input("Amount of Fields on the Game Board:", min_value=40, step=2)
+st.title("Mensch ärgere dich nicht")
+st.header("Simulation of a german board game")
+player_input = st.number_input("Amount of Players:", min_value=2, max_value=6, value=4)
+figure_input = st.number_input("Amount of Figures per Player:", min_value=1, max_value=4, value=4)
+field_input = st.number_input("Amount of Fields on the Game Board:", min_value=40, max_value=60, step=2, value=40)
 
 if st.button("Start Game Simulation"):
     simulate_game(player_input, figure_input, field_input)
