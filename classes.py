@@ -77,6 +77,9 @@ class Player:
         self.turns = 0
         self.roll_turns = 0
         self.no = "undefined"
+        self.amount_of_six = 0
+        self.total_roll = 0
+        self.real_playtime = 0
 
         # create start figures for player
         for x in range(self.figure_amount):
@@ -84,13 +87,18 @@ class Player:
             self.start_figures.append(figure)
             self.figures.append(figure)
 
-    def roll(self):
+    def roll(self, roll_duration):
         """
         method to roll the dice, returns the dice eye
         """
         self.roll_turns += 1
+        dice_eye = random.randint(1, 6)
+        if dice_eye == 6:
+            self.amount_of_six += 1
+        self.total_roll += dice_eye
+        self.real_playtime += roll_duration
 
-        return random.randint(1, 6)
+        return dice_eye
 
     def has_figures_on_board(self, board):
         """
@@ -134,7 +142,6 @@ class Player:
         """
         method to select the most suitable figure
         """
-        # TODO ensure start pos is never blocked (that figure is preferably moved)
         selected_figure = "undefined"
 
         # find next figure
@@ -180,10 +187,11 @@ class Player:
 
         return selected_figure
 
-    def move_figure(self, board, move_amount):
+    def move_figure(self, board, move_amount, move_duration):
         """
         method to select and move a player figure
         """
+        self.real_playtime += move_duration
         # select figure
         figure = self.select_figure(board, move_amount)
         # only proceed if there is a selected figure (figure that is movable)
